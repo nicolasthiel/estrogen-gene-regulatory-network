@@ -6,6 +6,8 @@ library(msigdbr)
 library(ggplot2)
 library(tidyr)
 library(GENIE3)
+library(igraph)
+library(RCy3)
 
 # download data
 gse <- tryCatch(
@@ -29,6 +31,10 @@ gene_symbols <- mapIds(
     keytype = "PROBEID",
     multiVals = "first"
 )
+
+# remove cell line samples
+human_cellline_samples <- metadata$geo_accession[metadata$source_name_ch1 == "Human CellLine"]
+expression_data <- expression_data[, !colnames(expression_data) %in% human_cellline_samples]
 
 # remove NA gene symbols
 valid_idx <- !is.na(gene_symbols)
@@ -73,3 +79,18 @@ ggplot(estrogen_expression_long, aes(x = Expression)) +
     geom_histogram(binwidth = 0.5, fill = "red", color = "black", alpha = 0.7) +
     labs(title = "Histogram of Estrogen Gene Expression", x = "Expression Level", y = "Frequency") +
     theme_minimal()
+
+# infer GRN
+weightMat <- GENIE3(as.matrix(estrogen_expression))
+
+# visualize in Cytoscape
+cytoscapePing()
+copyVisualStyle("default", "GENIE3")
+setEdgeTargetArrowShapeDefault("Arrow", style.name = "GENIE3")
+
+reportMax <- 400
+linkList.max <- getLinkList(weightMat, reportMax = reportMax)
+graph <- graph_from_data_frame(linkList.max, directed = TRUE)
+createNetworkFromIgraph(graph, title = paste("GRN Visualization (reportMax =", reportMax, ")"), collection = "GRN Collection")
+layoutNetwork("force-directed")
+setVisualStyle("GENIE3")
