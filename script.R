@@ -3,6 +3,8 @@ library(dplyr)
 library(hgu133plus2.db)
 library(tibble)
 library(msigdbr)
+library(ggplot2)
+library(tidyr)
 
 # download data
 gse <- tryCatch(
@@ -36,6 +38,13 @@ gene_symbols <- gene_symbols[valid_idx]
 expression_data <- aggregate(expression_data, by = list(Gene = gene_symbols), FUN = mean)
 rownames(expression_data) <- expression_data$Gene
 expression_data$Gene <- NULL
+
+# histogram of the expression data
+expression_data_long <- gather(expression_data, key = "Sample", value = "Expression")
+ggplot(expression_data_long, aes(x = Expression)) +
+    geom_histogram(binwidth = 0.5, fill = "blue", color = "black", alpha = 0.7) +
+    labs(title = "Histogram of Gene Expression", x = "Expression Level", y = "Frequency") +
+    theme_minimal()
 
 # get Hallmark gene sets for ESTROGEN_RESPONSE_EARLY and ESTROGEN_RESPONSE_LATE
 hallmark_genes <- msigdbr(species = "Homo sapiens", collection = "H")
