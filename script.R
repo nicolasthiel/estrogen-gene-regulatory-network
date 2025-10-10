@@ -5,6 +5,7 @@ library(tibble)
 library(msigdbr)
 library(ggplot2)
 library(tidyr)
+library(GENIE3)
 
 # download data
 gse <- tryCatch(
@@ -64,4 +65,11 @@ if (length(missing_genes) > 0) {
 }
 
 # subset expression_data to include only estrogen genes
-estrogen_expression_data <- expression_data[rownames(expression_data) %in% estrogen_genes, ]
+estrogen_expression <- expression_data[rownames(expression_data) %in% estrogen_genes, ]
+
+# histogram of the expression data
+estrogen_expression_long <- gather(estrogen_expression, key = "Sample", value = "Expression")
+ggplot(estrogen_expression_long, aes(x = Expression)) +
+    geom_histogram(binwidth = 0.5, fill = "red", color = "black", alpha = 0.7) +
+    labs(title = "Histogram of Estrogen Gene Expression", x = "Expression Level", y = "Frequency") +
+    theme_minimal()
