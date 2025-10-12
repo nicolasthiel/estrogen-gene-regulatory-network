@@ -3,11 +3,13 @@ library(dplyr)
 library(hgu133plus2.db)
 library(tibble)
 library(msigdbr)
+library(dorothea)
 library(ggplot2)
 library(tidyr)
 library(GENIE3)
 library(igraph)
 library(RCy3)
+library(biomaRt)
 
 # download data
 gse <- tryCatch(
@@ -80,8 +82,14 @@ ggplot(estrogen_expression_long, aes(x = Expression)) +
     labs(title = "Histogram of Estrogen Gene Expression", x = "Expression Level", y = "Frequency") +
     theme_minimal()
 
+# load curated TF–target interactions
+data(dorothea_hs, package = "dorothea")
+human_tfs <- unique(dorothea_hs$tf)
+regulators <- intersect(human_tfs, rownames(estrogen_expression))
+
 # infer GRN
 weightMat <- GENIE3(as.matrix(estrogen_expression))
+weightMat2 <- GENIE3(as.matrix(estrogen_expression), regulators = regulators)
 
 # visualize in Cytoscape
 cytoscapePing()
@@ -89,7 +97,7 @@ copyVisualStyle("default", "GENIE3")
 setEdgeTargetArrowShapeDefault("Arrow", style.name = "GENIE3")
 
 reportMax <- 400
-linkList.max <- getLinkList(weightMat, reportMax = reportMax)
+linkList.max <- getLinkList(weightMat2, reportMax = reportMax)
 graph <- graph_from_data_frame(linkList.max, directed = TRUE)
 createNetworkFromIgraph(graph, title = paste("GRN Visualization (reportMax =", reportMax, ")"), collection = "GRN Collection")
 layoutNetwork("force-directed")
