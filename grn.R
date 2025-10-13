@@ -1,14 +1,23 @@
-library(GEOquery)
-library(dplyr)
-library(hgu133plus2.db)
-library(tibble)
-library(msigdbr)
-library(dorothea)
-library(ggplot2)
-library(tidyr)
-library(GENIE3)
-library(igraph)
-library(RCy3)
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+    install.packages("BiocManager")
+}
+
+pkgs <- c(
+    "GEOquery",
+    "dplyr",
+    "hgu133plus2.db",
+    "tibble",
+    "msigdbr",
+    "dorothea",
+    "ggplot2",
+    "tidyr",
+    "GENIE3",
+    "igraph",
+    "RCy3"
+)
+
+BiocManager::install(pkgs, ask = FALSE, update = FALSE)
+invisible(lapply(pkgs, library, character.only = TRUE))
 
 # download data
 gse <- tryCatch(
