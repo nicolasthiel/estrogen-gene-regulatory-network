@@ -1,7 +1,7 @@
+# install and load libraries
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
     install.packages("BiocManager")
 }
-
 pkgs <- c(
     "GEOquery",
     "dplyr",
@@ -15,7 +15,6 @@ pkgs <- c(
     "igraph",
     "RCy3"
 )
-
 BiocManager::install(pkgs, ask = FALSE, update = FALSE)
 invisible(lapply(pkgs, library, character.only = TRUE))
 
@@ -100,13 +99,5 @@ weightMat <- GENIE3(as.matrix(estrogen_expression))
 weightMat.TF <- GENIE3(as.matrix(estrogen_expression), regulators = regulators)
 reportMax <- 400
 linkList.max <- getLinkList(weightMat.TF, reportMax = reportMax)
-graph <- graph_from_data_frame(linkList.max, directed = TRUE)
-
-# visualize in Cytoscape
-cytoscapePing()
-copyVisualStyle("default", "GENIE3")
-setEdgeTargetArrowShapeDefault("Arrow", style.name = "GENIE3")
-
-createNetworkFromIgraph(graph, title = paste("GRN of Estrogen-Associated Genes"), collection = "GRN Collection")
-layoutNetwork("force-directed")
-setVisualStyle("GENIE3")
+grn <- graph_from_data_frame(linkList.max, directed = TRUE)
+saveRDS(grn, file = "networks/estrogen_grn_igraph.rds")
