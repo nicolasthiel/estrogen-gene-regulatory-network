@@ -14,9 +14,9 @@ grn <- readRDS("networks/estrogen_grn_igraph.rds")
 
 # visualize in Cytoscape
 cytoscapePing()
-copyVisualStyle("default", "GENIE3")
-setEdgeTargetArrowShapeDefault("Arrow", style.name = "GENIE3")
 
 createNetworkFromIgraph(grn, title = paste("GRN of Estrogen-Associated Genes"), collection = "GRN Collection")
+analyzeNetwork(directed = TRUE)
 layoutNetwork("force-directed")
-setVisualStyle("GENIE3")
+importVisualStyles("styles.xml")
+setVisualStyle("GRN")
