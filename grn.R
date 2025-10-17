@@ -13,7 +13,8 @@ pkgs <- c(
     "tidyr",
     "GENIE3",
     "igraph",
-    "RCy3"
+    "RCy3",
+    "clusterProfiler"
 )
 BiocManager::install(pkgs, ask = FALSE, update = FALSE)
 invisible(lapply(pkgs, library, character.only = TRUE))
@@ -59,8 +60,10 @@ expression_data$Gene <- NULL
 expression_data_long <- gather(expression_data, key = "Sample", value = "Expression")
 ggplot(expression_data_long, aes(x = Expression)) +
     geom_histogram(binwidth = 0.5, fill = "blue", color = "black", alpha = 0.7) +
-    labs(title = "Histogram of Gene Expression", x = "Expression Level", y = "Frequency") +
+    labs(title = "Expression Level Distribution of All Genes", x = "log2 Expression Level", y = "Frequency") +
     theme_minimal()
+dir.create("figs", showWarnings = FALSE)
+ggsave("figs/expression_histogram_all_genes.png", width = 8, height = 6)
 
 # get Hallmark gene sets for ESTROGEN_RESPONSE_EARLY and ESTROGEN_RESPONSE_LATE
 hallmark_genes <- msigdbr(species = "Homo sapiens", collection = "H")
@@ -86,8 +89,10 @@ estrogen_expression <- expression_data[rownames(expression_data) %in% estrogen_g
 estrogen_expression_long <- gather(estrogen_expression, key = "Sample", value = "Expression")
 ggplot(estrogen_expression_long, aes(x = Expression)) +
     geom_histogram(binwidth = 0.5, fill = "red", color = "black", alpha = 0.7) +
-    labs(title = "Histogram of Estrogen Gene Expression", x = "Expression Level", y = "Frequency") +
+    labs(title = "Expression Level Distribution of Estrogen-Response Genes", x = "log2 Expression Level", y = "Frequency") +
     theme_minimal()
+dir.create("figs", showWarnings = FALSE)
+ggsave("figs/expression_histogram_estrogen_genes.png", width = 8, height = 6)
 
 # load curated TF–target interactions
 data(dorothea_hs, package = "dorothea")
@@ -95,9 +100,49 @@ human_tfs <- unique(dorothea_hs$tf)
 regulators <- intersect(human_tfs, rownames(estrogen_expression))
 
 # infer GRN
-weightMat <- GENIE3(as.matrix(estrogen_expression))
 weightMat.TF <- GENIE3(as.matrix(estrogen_expression), regulators = regulators)
-reportMax <- 400
-linkList.max <- getLinkList(weightMat.TF, reportMax = reportMax)
+linkList.max <- getLinkList(weightMat.TF, threshold = 0.13)
 grn <- graph_from_data_frame(linkList.max, directed = TRUE)
+
+# for easier cytoscape visualization
+V(grn)$is_TF <- ifelse(V(grn)$name %in% regulators, 1, 0)
+
+dir.create("networks", showWarnings = FALSE)
 saveRDS(grn, file = "networks/estrogen_grn_igraph.rds")
+
+# centrality measures
+outdegree <- degree(grn, mode = "out")
+betweenness <- betweenness(grn, directed = TRUE, normalized = TRUE)
+closeness <- closeness(grn, mode = "out", normalized = TRUE)
+node_stats <- data.frame(
+    gene = names(outdegree),
+    outdegree = outdegree,
+    betweenness = betweenness,
+    closeness = closeness
+)
+
+# sort TFs by outdegree
+tf_stats <- node_stats %>%
+    filter(gene %in% regulators) %>%
+    arrange(desc(outdegree))
+
+# histogram of outdegree for TFs
+ggplot(tf_stats, aes(x = outdegree)) +
+    geom_histogram(fill = "green", color = "black", alpha = 0.7) +
+    labs(title = "Histogram of Outdegree for TFs", x = "Outdegree", y = "Frequency") +
+    theme_minimal()
+
+# subset PGR + targets
+pgr_targets <- neighbors(grn, "PGR", mode = "out")
+pgr_subgraph <- induced_subgraph(grn, vids = c("PGR", names(pgr_targets)))
+saveRDS(pgr_subgraph, file = "networks/pgr_subgraph.rds")
+
+# subset AR + targets
+ar_targets <- neighbors(grn, "AR", mode = "out")
+ar_subgraph <- induced_subgraph(grn, vids = c("AR", names(ar_targets)))
+saveRDS(ar_subgraph, file = "networks/ar_subgraph.rds")
+
+# subset FoXC1 + targets
+foxc1_targets <- neighbors(grn, "FOXC1", mode = "out")
+foxc1_subgraph <- induced_subgraph(grn, vids = c("FOXC1", names(foxc1_targets)))
+saveRDS(foxc1_subgraph, file = "networks/foxc1_subgraph.rds")
